@@ -5,7 +5,8 @@ Parse file into several CSV files.
 
 """
 
-import csv, os.path, tempfile, shutil, time
+import csv, os.path, tempfile, shutil
+from datetime import datetime
 
 def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
     """
@@ -19,7 +20,8 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
     """
 
     # Number of seconds between the epoch and 1/1/1980:
-    time_adjust = time.mktime((1980,1,1,0,0,0,1,1,0))-time.mktime((1970,1,1,0,0,0,1,1,0))
+    time_adjust = (datetime(1980, 1, 1, 0, 0, 0)-\
+                   datetime(1970, 1, 1, 0, 0, 0)).total_seconds()
 
     with open(in_file_name, 'rb') as f_in:
         fd, name = tempfile.mkstemp(dir=work_dir)
@@ -28,8 +30,6 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
         last_order_number_date = ''
         count = 0
         for line in iter(f_in):
-            if (count % 20000) == 0:
-                print count
             count += 1
             record_indicator = line[0:2]
             segment = line[2:6]
@@ -52,7 +52,9 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
             # need to adjust the number of seconds to offset from the
             # Unix epoch so as to enable usage of Python's time module:
             trans_time_sec = int(trans_time)/65535.0+time_adjust
-            trans_time = time.strftime('%m/%d/%Y %H:%M:%S', time.gmtime(trans_time_sec))
+            trans_time = \
+              datetime.strftime(datetime.utcfromtimestamp(trans_time_sec), \
+                                '%m/%d/%Y %H:%M:%S.%f')
 
             buy_sell_indicator = line[36:37]
             activity_type = line[37:38]
@@ -63,8 +65,9 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
             # FUTSTK:
             if instrument not in ['FUTIDX', 'FUTSTK']:
                 continue
-            expiry_date = time.strftime('%m/%d/%Y',
-                                        time.strptime(line[54:63], '%d%b%Y'))
+            expiry_date = \
+              datetime.strftime(datetime.strptime(line[54:63], '%d%b%Y'),
+                                '%m/%d/%Y')
             strike_price = int(line[63:71])
             option_type = line[71:73]
             volume_disclosed = int(line[73:81])
