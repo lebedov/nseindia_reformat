@@ -7,10 +7,6 @@ according to the formats described in the accompanying PDF file.
 
 Requirements
 ------------
-The scripts require the following Python packages:
-
-* lxml
-  
 The code requires Python 2.7 or later to run.
 
 Author
