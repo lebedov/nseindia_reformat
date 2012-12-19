@@ -14,9 +14,8 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
     -----
     Assumes equity derivatives market orders data format.
 
-    Saves generated CSV data in multiple files names using the date in
-    the order number, i.e., each file YYYYMMDD.csv contains all of the
-    entries with an order number of YYYYMMDDXXXXXXXX.
+    Saves generated CSV data in multiple files names containing a
+    fixed number of rows.
     """
 
     # Number of seconds between the epoch and 1/1/1980:
