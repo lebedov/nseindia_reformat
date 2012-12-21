@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 """
-Parse file into several CSV files.
-
+Parse India data files into multiple CSV files.
 """
 
 import csv, os.path, tempfile, shutil
@@ -13,9 +12,20 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
     Parses input data file and saves generated CSV data in multiple
     files names containing a fixed number of rows.
 
+    Parameters
+    ----------
+    in_file_name : str
+        Input file name.
+    N_lines : int
+        Number of lines to include in each output CSV file.
+    work_dir : str
+        Directory in which to save the CSV files.
+
     Notes
     -----
     Assumes equity derivatives market orders data format.
+    Assumes that the directory `work_dir` exists.
+
     """
 
     # Number of seconds between the epoch and 1/1/1980:
@@ -113,9 +123,20 @@ def parse_trades_data(in_file_name, N_lines=100000, work_dir='./'):
     Parses input data file and saves generated CSV data in multiple
     files names containing a fixed number of rows.
 
+    Parameters
+    ----------
+    in_file_name : str
+        Input file name.
+    N_lines : int
+        Number of lines to include in each output CSV file.
+    work_dir : str
+        Directory in which to save the CSV files.
+
     Notes
     -----
     Assumes equity derivatives market trades data format.
+    Assumes that the directory `work_dir` exists.
+    
     """
 
     # Number of seconds between the epoch and 1/1/1980:
@@ -199,9 +220,11 @@ def parse_trades_data(in_file_name, N_lines=100000, work_dir='./'):
         f.close()
         shutil.move(name, os.path.join(work_dir, '%i.csv' % count))
         print '%i.csv' % count
-            
+
 if __name__ == '__main__':
-    # parse_orders_data('/home/lev/india_maglaras/nse/fao/FAO_Orders_14092012.DAT',
-    #                   100000, '/home/lev/india_maglaras/nse/fao/')
+
+    # Assumes that all of the input data is in a single file:
+    parse_orders_data('/home/lev/india_maglaras/nse/fao/FAO_Orders_14092012.DAT',
+                      100000, '/home/lev/india_maglaras/nse/fao/orders/')
     parse_trades_data('/home/lev/india_maglaras/nse/fao/FAO_Trades_28092012.DAT',
-                      100000, '/home/lev/india_maglaras/nse/fao/')
+                      100000, '/home/lev/india_maglaras/nse/fao/trades/')
