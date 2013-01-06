@@ -4,23 +4,23 @@
 Parse India data files into multiple CSV files.
 """
 
-import csv, os.path, tempfile, shutil
+import csv, os.path, tempfile, shelve, shutil
 from datetime import datetime
 
-def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
+def parse_orders_data(in_file_name, work_dir='./', N_lines=100000):
     """
-    Parses input data file and saves generated CSV data in multiple
-    files names containing a fixed number of rows.
-
+    Parses input data file and saves generated CSV data in multiple files names,
+    each of which contains all orders associated with a specific security.
+    
     Parameters
     ----------
     in_file_name : str
         Input file name.
-    N_lines : int
-        Number of lines to include in each output CSV file.
     work_dir : str
         Directory in which to save the CSV files.
-
+    N_lines : int
+        Number of lines at which to print a progress indicator.
+        
     Notes
     -----
     Assumes equity derivatives market orders data format.
@@ -33,24 +33,13 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
                    datetime(1970, 1, 1, 0, 0, 0)).total_seconds()
 
     with open(in_file_name, 'rb') as f_in:
-        fd, name = tempfile.mkstemp(dir=work_dir)
-        f = os.fdopen(fd, 'wb')
-        w = csv.writer(f)
-        last_order_number_date = ''
+        db = {}
         count = 0
         for line in iter(f_in):
-
-            # Close and rename the output file when the order number
-            # date changes:
             count += 1
             if (count % N_lines) == 0:
-                f.close()
-                shutil.move(name, os.path.join(work_dir, '%i.csv' % count))
-                print '%i.csv' % count
-                fd, name = tempfile.mkstemp(dir=work_dir)
-                f = os.fdopen(fd, 'wb')
-                w = csv.writer(f)
-
+                print count
+            
             record_indicator = line[0:2]
             segment = line[2:6]
             order_number = line[6:22]
@@ -111,26 +100,29 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
                    spread_comb_type,
                    algo_ind,
                    client_id_flag]
-            w.writerow(row)
-
-        # Close and rename the last file:
-        f.close()
-        shutil.move(name, os.path.join(work_dir, '%i.csv' % count))
-        print '%i.csv' % count
-
-def parse_trades_data(in_file_name, N_lines=100000, work_dir='./'):
+            if not db.has_key(symbol):
+                f = open(os.path.join(work_dir, symbol + '-orders.csv'), 'wb')
+                db[symbol] = {'handle': f, 
+                              'writer': csv.writer(f)}
+            db[symbol]['writer'].writerow(row)
+            
+    # Close files:
+    for symbol in db.keys():
+        db[symbol]['handle'].close()
+    
+def parse_trades_data(in_file_name, work_dir='./', N_lines=100000):
     """
-    Parses input data file and saves generated CSV data in multiple
-    files names containing a fixed number of rows.
+    Parses input data file and saves generated CSV data in multiple files names,
+    each of which contains all trades associated with a specific security.
 
     Parameters
     ----------
     in_file_name : str
         Input file name.
-    N_lines : int
-        Number of lines to include in each output CSV file.
     work_dir : str
         Directory in which to save the CSV files.
+    N_lines : int
+        Number of lines at which to print a progress indicator.
 
     Notes
     -----
@@ -144,23 +136,12 @@ def parse_trades_data(in_file_name, N_lines=100000, work_dir='./'):
                    datetime(1970, 1, 1, 0, 0, 0)).total_seconds()
 
     with open(in_file_name, 'rb') as f_in:
-        fd, name = tempfile.mkstemp(dir=work_dir)
-        f = os.fdopen(fd, 'wb')
-        w = csv.writer(f)
-        last_order_number_date = ''
+        db = {}
         count = 0
         for line in iter(f_in):
-
-            # Close and rename the output file when the order number
-            # date changes:
             count += 1
             if (count % N_lines) == 0:
-                f.close()
-                shutil.move(name, os.path.join(work_dir, '%i.csv' % count))
-                print '%i.csv' % count
-                fd, name = tempfile.mkstemp(dir=work_dir)
-                f = os.fdopen(fd, 'wb')
-                w = csv.writer(f)
+                print count
 
             record_indicator = line[0:2]
             segment = line[2:6]
@@ -214,17 +195,20 @@ def parse_trades_data(in_file_name, N_lines=100000, work_dir='./'):
                    sell_order_num,
                    sell_algo_ind,
                    sell_client_id_flag]
-            w.writerow(row)
+            if not db.has_key(symbol):
+                f = open(os.path.join(work_dir, symbol + '-trades.csv'), 'wb')
+                db[symbol] = {'handle': f, 
+                              'writer': csv.writer(f)}
+            db[symbol]['writer'].writerow(row)
 
-        # Close and rename the last file:
-        f.close()
-        shutil.move(name, os.path.join(work_dir, '%i.csv' % count))
-        print '%i.csv' % count
-
+    # Close files:
+    for symbol in db.keys():
+        db[symbol]['handle'].close()
+        
 if __name__ == '__main__':
 
     # Assumes that all of the input data is in a single file:
     parse_orders_data('/home/lev/india_maglaras/nse/fao/FAO_Orders_14092012.DAT',
-                      100000, '/home/lev/india_maglaras/nse/fao/orders/')
-    parse_trades_data('/home/lev/india_maglaras/nse/fao/FAO_Trades_28092012.DAT',
-                      100000, '/home/lev/india_maglaras/nse/fao/trades/')
+                      '/home/lev/india_maglaras/nse/fao/orders/')
+    # parse_trades_data('/home/lev/india_maglaras/nse/fao/FAO_Trades_28092012.DAT',
+    #                   '/home/lev/india_maglaras/nse/fao/trades/')
