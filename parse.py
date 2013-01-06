@@ -56,11 +56,11 @@ def parse_orders_data(in_file_name, N_lines=100000, work_dir='./'):
             order_number = line[6:22]
             trans_time = line[22:36]
 
-            # Convert number of jiffies (1/65535 s = 1 jiffie) since
+            # Convert number of jiffies (1/65536 s = 1 jiffie) since
             # 1/1/1980 into a readable time/date format (UTC); note that we
             # need to adjust the number of seconds to offset from the
             # Unix epoch so as to enable usage of Python's time module:
-            trans_time_sec = int(trans_time)/65535.0+time_adjust
+            trans_time_sec = int(trans_time)/65536.0+time_adjust
             trans_time = \
               datetime.strftime(datetime.utcfromtimestamp(trans_time_sec), \
                                 '%m/%d/%Y %H:%M:%S.%f')
@@ -167,11 +167,11 @@ def parse_trades_data(in_file_name, N_lines=100000, work_dir='./'):
             trade_number = line[6:22]
             trade_time = line[22:36]
 
-            # Convert number of jiffies (1/65535 s = 1 jiffie) since
+            # Convert number of jiffies (1/65536 s = 1 jiffie) since
             # 1/1/1980 into a readable time/date format (UTC); note that we
             # need to adjust the number of seconds to offset from the
             # Unix epoch so as to enable usage of Python's time module:
-            trade_time_sec = int(trade_time)/65535.0+time_adjust
+            trade_time_sec = int(trade_time)/65536.0+time_adjust
             trade_time = \
               datetime.strftime(datetime.utcfromtimestamp(trade_time_sec), \
                                 '%m/%d/%Y %H:%M:%S.%f')
