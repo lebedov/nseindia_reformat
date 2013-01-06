@@ -43,17 +43,21 @@ def parse_orders_data(in_file_name, work_dir='./', N_lines=100000):
             record_indicator = line[0:2]
             segment = line[2:6]
             order_number = line[6:22]
-            trans_time = line[22:36]
+            trans_date_time = line[22:36]
 
             # Convert number of jiffies (1/65536 s = 1 jiffie) since
             # 1/1/1980 into a readable time/date format (UTC); note that we
             # need to adjust the number of seconds to offset from the
             # Unix epoch so as to enable usage of Python's time module:
-            trans_time_sec = int(trans_time)/65536.0+time_adjust
-            trans_time = \
-              datetime.strftime(datetime.utcfromtimestamp(trans_time_sec), \
-                                '%m/%d/%Y %H:%M:%S.%f')
+            trans_date_time_sec = int(trans_date_time)/65536.0+time_adjust
 
+            # Split the transaction time into a date and time of day:
+            trans_date = \
+              datetime.strftime(datetime.utcfromtimestamp(trans_date_time_sec), \
+                                '%m/%d/%Y')
+            trans_time = \
+              datetime.strftime(datetime.utcfromtimestamp(trans_date_time_sec), \
+                                '%H:%M:%S.%f')
             buy_sell_indicator = line[36:37]
             activity_type = line[37:38]
             symbol = line[38:48].strip('b')
@@ -82,6 +86,7 @@ def parse_orders_data(in_file_name, work_dir='./', N_lines=100000):
             row = [record_indicator,
                    segment,
                    order_number,
+                   trans_date,
                    trans_time,
                    buy_sell_indicator,
                    activity_type,
@@ -146,17 +151,21 @@ def parse_trades_data(in_file_name, work_dir='./', N_lines=100000):
             record_indicator = line[0:2]
             segment = line[2:6]
             trade_number = line[6:22]
-            trade_time = line[22:36]
+            trade_date_time = line[22:36]
 
             # Convert number of jiffies (1/65536 s = 1 jiffie) since
             # 1/1/1980 into a readable time/date format (UTC); note that we
             # need to adjust the number of seconds to offset from the
             # Unix epoch so as to enable usage of Python's time module:
-            trade_time_sec = int(trade_time)/65536.0+time_adjust
-            trade_time = \
-              datetime.strftime(datetime.utcfromtimestamp(trade_time_sec), \
-                                '%m/%d/%Y %H:%M:%S.%f')
+            trade_date_time_sec = int(trade_date_time)/65536.0+time_adjust
 
+            # Split the trade time into a date and time of day:
+            trade_date = \
+              datetime.strftime(datetime.utcfromtimestamp(trade_date_time_sec), \
+                                '%m/%d/%Y')
+            trade_time = \
+              datetime.strftime(datetime.utcfromtimestamp(trade_date_time_sec), \
+                                '%H:%M:%S.%f')
             symbol = line[36:46].strip('b')
             instrument = line[46:52]
 
@@ -181,6 +190,7 @@ def parse_trades_data(in_file_name, work_dir='./', N_lines=100000):
             row = [record_indicator,
                    segment,
                    trade_number,
+                   trade_date,
                    trade_time,
                    symbol,
                    instrument,
