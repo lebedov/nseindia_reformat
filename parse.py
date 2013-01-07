@@ -11,7 +11,7 @@ def parse_orders_data(in_file_name, work_dir='./', N_lines=100000):
     """
     Parses input data file and saves generated CSV data in multiple files names,
     each of which contains all orders associated with a specific security.
-    
+
     Parameters
     ----------
     in_file_name : str
@@ -20,7 +20,7 @@ def parse_orders_data(in_file_name, work_dir='./', N_lines=100000):
         Directory in which to save the CSV files.
     N_lines : int
         Number of lines at which to print a progress indicator.
-        
+
     Notes
     -----
     Assumes equity derivatives market orders data format.
@@ -39,7 +39,7 @@ def parse_orders_data(in_file_name, work_dir='./', N_lines=100000):
             count += 1
             if (count % N_lines) == 0:
                 print count
-            
+
             record_indicator = line[0:2]
             segment = line[2:6]
             order_number = line[6:22]
@@ -107,14 +107,14 @@ def parse_orders_data(in_file_name, work_dir='./', N_lines=100000):
                    client_id_flag]
             if not db.has_key(symbol):
                 f = open(os.path.join(work_dir, symbol + '-orders.csv'), 'wb')
-                db[symbol] = {'handle': f, 
+                db[symbol] = {'handle': f,
                               'writer': csv.writer(f)}
             db[symbol]['writer'].writerow(row)
-            
+
     # Close files:
     for symbol in db.keys():
         db[symbol]['handle'].close()
-    
+
 def parse_trades_data(in_file_name, work_dir='./', N_lines=100000):
     """
     Parses input data file and saves generated CSV data in multiple files names,
@@ -133,7 +133,7 @@ def parse_trades_data(in_file_name, work_dir='./', N_lines=100000):
     -----
     Assumes equity derivatives market trades data format.
     Assumes that the directory `work_dir` exists.
-    
+
     """
 
     # Number of seconds between the epoch and 1/1/1980:
@@ -207,18 +207,18 @@ def parse_trades_data(in_file_name, work_dir='./', N_lines=100000):
                    sell_client_id_flag]
             if not db.has_key(symbol):
                 f = open(os.path.join(work_dir, symbol + '-trades.csv'), 'wb')
-                db[symbol] = {'handle': f, 
+                db[symbol] = {'handle': f,
                               'writer': csv.writer(f)}
             db[symbol]['writer'].writerow(row)
 
     # Close files:
     for symbol in db.keys():
         db[symbol]['handle'].close()
-        
+
 if __name__ == '__main__':
 
     # Assumes that all of the input data is in a single file:
     parse_orders_data('/home/lev/india_maglaras/nse/fao/FAO_Orders_14092012.DAT',
                       '/home/lev/india_maglaras/nse/fao/orders/')
-    # parse_trades_data('/home/lev/india_maglaras/nse/fao/FAO_Trades_28092012.DAT',
-    #                   '/home/lev/india_maglaras/nse/fao/trades/')
+    parse_trades_data('/home/lev/india_maglaras/nse/fao/FAO_Trades_28092012.DAT',
+                      '/home/lev/india_maglaras/nse/fao/trades/')
