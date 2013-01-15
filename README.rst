@@ -1,13 +1,17 @@
 .. -*- rst -*-
 
-Reformatting of India Data
-==========================
-The included script parses the specified data into CSV files 
-according to the formats described in the accompanying PDF file.
+Reformatting and Analysis of India Equity Order/Trade Data
+==========================================================
+The included scripts parse the specified data into CSV files 
+according to the formats described in the accompanying PDF file and 
+analyze the data in each file.
 
 Requirements
 ------------
-The code requires Python 2.7 or later to run.
+The code requires the following to run:
+
+* Python 2.7 or later.
+* Pandas 0.10 or later.
 
 Author
 ------
