@@ -5,6 +5,7 @@ Analyze parsed India trades data.
 """
 
 import csv, datetime, sys
+import numpy as np
 import pandas
 
 def rount_ceil_minute(d):
@@ -53,29 +54,29 @@ def sample(df, delta, date_time_col, *data_cols):
 
     # Uncomment to start and end at the nearest minute after the first and last
     # times in the input DataFrame:
-    # t_min = round_ceil_minute(df[date_time_col].min())
-    # t_max = round_ceil_minute(df[date_time_col].max())
-    t_min = df[date_time_col].min()
-    t_max = df[date_time_col].max()
-
+    # t_start = round_ceil_minute(df[date_time_col].min())
+    # t_end = round_ceil_minute(df[date_time_col].max())
+    t_start = df[date_time_col].min()
+    t_end = df[date_time_col].max()
+    
     date = []
     data = []
-    t = t_min
+    t = t_start
     temp_dict = {date_time_col: []}        
     last_dict = {}
     for col in data_cols:
         temp_dict[col] = []
         last_dict[col] = df.irow(0)[col]
-    i = 1
+    i = 0
 
     # Only update the data point stored at each time point when 
     # a time point in the original series is passed:
-    while t < t_max:
+    while t <= t_end:
         temp_dict[date_time_col].append(t)
-        while t > df.irow(i)[date_time_col]:
+        while i < len(df) and t >= df.irow(i)[date_time_col]:
             for col in data_cols:
                 last_dict[col] = df.irow(i)[col]
-            i += 1            
+            i += 1                       
         for col in data_cols:
             temp_dict[col].append(last_dict[col])
         t += delta        
@@ -95,15 +96,15 @@ def analyze(file_name):
     output : list
         Results of analysis. These include the following (in order):
 
-        number of trades for Q1
-        number of trades for Q2
-        number of trades for Q3
-        maximum trade price
-        minimum trade price
-        mean trade price
-        number of trade interarrival times for Q1
-        number of trade interarrival times for Q2
-        number of trade interarrival times for Q3
+        number of trades with quantity below Q1
+        number of trades with quantity below Q2
+        number of trades with quantity below Q3
+        maximum trade quantity
+        minimum trade quantity
+        mean trade quantity
+        number of trades with interarrival times below Q1
+        number of trades with interarrival times below Q2
+        number of trades with interarrival times below Q3
         maximum daily trade volume
         minimum daily trade volume
         mean daily trade volume
@@ -138,15 +139,15 @@ def analyze(file_name):
                                 'sell_algo_ind',
                                 'sell_client_id_flag'])    
 
-    # Find number of trades below the quartiles:
-    N_trade_price_q1 = len(df[df['trade_price'] < df['trade_price'].quantile(0.25)])
-    N_trade_price_q2 = len(df[df['trade_price'] < df['trade_price'].quantile(0.50)])
-    N_trade_price_q3 = len(df[df['trade_price'] < df['trade_price'].quantile(0.75)])
+    # Find number of trades with quantities below the quartiles:
+    N_trade_quant_q1 = len(df[df['trade_quantity'] <= df['trade_quantity'].quantile(0.25)])
+    N_trade_quant_q2 = len(df[df['trade_quantity'] <= df['trade_quantity'].quantile(0.50)])
+    N_trade_quant_q3 = len(df[df['trade_quantity'] <= df['trade_quantity'].quantile(0.75)])
 
-    # Other stats on the number of trades:
-    max_trade_price = df['trade_price'].max()
-    min_trade_price = df['trade_price'].min()
-    mean_trade_price = df['trade_price'].mean()
+    # Trade quantity stats:
+    max_trade_quant = df['trade_quantity'].max()
+    min_trade_quant = df['trade_quantity'].min()
+    mean_trade_quant = df['trade_quantity'].mean()
 
     # Convert trade date/times to datetime.timedelta and join the column to the
     # original data:
@@ -162,24 +163,46 @@ def analyze(file_name):
     # not be regarded as an interarrival time):
     s_inter_time = df.groupby('trade_date')['trade_date_time'].apply(lambda x: x.diff())
 
-    # Convert interarrival times to seconds; exclude the NaNs that result
-    # because of the application of the diff() method to each group of trade
-    # times:
-    s_inter_time = \
-      s_inter_time[s_inter_time.notnull()].apply(lambda x: x.total_seconds())  
+    # Exclude the NaNs that result because of the application of the diff()
+    # method to each group of trade times:
+    s_inter_time = s_inter_time[s_inter_time.notnull()]
     
-    # Find number of interarrival times below the quartiles:    
-    N_inter_time_q1 = sum(s_inter_time<s_inter_time.quantile(0.25))
-    N_inter_time_q2 = sum(s_inter_time<s_inter_time.quantile(0.50))
-    N_inter_time_q3 = sum(s_inter_time<s_inter_time.quantile(0.75))
+    if len(s_inter_time) > 0:
+        
+        # Convert interarrival times to seconds:
+        s_inter_time = s_inter_time.apply(lambda x: x.total_seconds())  
+    
+        # Find number of interarrival times below the quartiles:    
+        N_inter_time_q1 = sum(s_inter_time<=s_inter_time.quantile(0.25))
+        N_inter_time_q2 = sum(s_inter_time<=s_inter_time.quantile(0.50))
+        N_inter_time_q3 = sum(s_inter_time<=s_inter_time.quantile(0.75))
+    else:
 
+        # If there are not enough trades per day to compute interarrival times,
+        # set the number of times to 0 for each quantile:
+        N_inter_time_q1 = 0
+        N_inter_time_q2 = 0
+        N_inter_time_q3 = 0
+        
     # Compute the daily traded volume:
-    s_daily_vol = df.groupby('trade_date')['trade_quantity'].apply(sum)
-    daily_vol_list = s_daily_vol.tolist()
-    max_daily_vol = s_daily_vol.max()
-    min_daily_vol = s_daily_vol.min()
-    mean_daily_vol = s_daily_vol.mean()
-    median_daily_vol = s_daily_vol.median()
+    s_daily_vol = \
+      df.groupby('trade_date')['trade_quantity'].apply(sum)
+    df_daily_vol = pandas.DataFrame({'trade_date': s_daily_vol.index,
+                                     'trade_quantity': s_daily_vol.values})
+    
+    # Set the number of trades for days on which no trades were recorded to 0:
+    sept_days = map(lambda d: '09/%02i/2012' % d, 
+                    [3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 24,
+                     25, 26, 27, 28])        
+    df_daily_vol = \
+      df_daily_vol.combine_first(pandas.DataFrame({'trade_date': sept_days, 
+                                 'trade_quantity': np.zeros(len(sept_days))}))
+
+    # Compute daily volume stats:
+    max_daily_vol = df_daily_vol['trade_quantity'].max()
+    min_daily_vol = df_daily_vol['trade_quantity'].min()
+    mean_daily_vol = df_daily_vol['trade_quantity'].mean()
+    median_daily_vol = df_daily_vol['trade_quantity'].median()
 
     # Sample trade prices every 3 minutes for each day of the month and combine
     # into a single DataFrame:
@@ -200,19 +223,36 @@ def analyze(file_name):
         lambda x: x['trade_price'].diff()/x['trade_price'])
     s_returns = s_returns[s_returns.notnull()]
     
-    # Compute average and standard deviation of returns in bps:           
-    mean_returns = s_returns.mean()*10000
-    std_returns = s_returns.std()*10000
-    sum_abs_returns = sum(abs(s_returns))*10000
+    if len(s_returns) > 0:
+
+        # Compute average and standard deviation of returns in bps:           
+        mean_returns = s_returns.mean()*10000
+        std_returns = s_returns.std()*10000
+        sum_abs_returns = sum(abs(s_returns))*10000
+    else:
+
+        # If there are too few trades with which to compute returns, set the
+        # return statistics to 0:
+        mean_returns = 0.0
+        std_returns = 0.0
+        sum_abs_returns = 0.0
+        
+    # Set the trade price for days on which no trades were recorded to 0:
+    df_price = df[['trade_date', 'trade_price']]
+    df_price = df_price.combine_first(pandas.DataFrame({'trade_date': sept_days, 
+                                 'trade_price': np.zeros(len(sept_days))}))
 
     # Compute the daily maximum and minimum trade price expressed in basis
     # points away from the daily opening price:
     daily_price_max_list = map(lambda x: 10000*int(x),
-      df.groupby('trade_date')['trade_price'].apply(max)-df.ix[0]['trade_price'])
+      df_price.groupby('trade_date')['trade_price'].apply(max)-df.ix[0]['trade_price'])
     daily_price_min_list = map(lambda x: 10000*int(x),
-      df.groupby('trade_date')['trade_price'].apply(min)-df.ix[0]['trade_price'])
-    return [N_trade_price_q1, N_trade_price_q2, N_trade_price_q3,
-            max_trade_price, min_trade_price, mean_trade_price,
+      df_price.groupby('trade_date')['trade_price'].apply(min)-df.ix[0]['trade_price'])
+
+    #import ipdb; ipdb.set_trace()
+    #return df
+    return [N_trade_quant_q1, N_trade_quant_q2, N_trade_quant_q3,
+            max_trade_quant, min_trade_quant, mean_trade_quant,
             N_inter_time_q1, N_inter_time_q2, N_inter_time_q3,
             max_daily_vol, min_daily_vol, mean_daily_vol, 
             median_daily_vol, mean_trade_price, std_trade_price_res, 
@@ -221,6 +261,10 @@ def analyze(file_name):
 if len(sys.argv) == 1:
     print 'need to specify input files'
     sys.exit(0)
+
+# sept_days = map(lambda d: '09/%02i/2012' % d, 
+#                 [3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 24,
+#                  25, 26, 27, 28])        
 
 w = csv.writer(sys.stdout)
 for file_name in sys.argv[1:]:
