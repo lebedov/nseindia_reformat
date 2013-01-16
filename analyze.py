@@ -4,7 +4,7 @@
 Analyze parsed India trades data.
 """
 
-import datetime, sys
+import csv, datetime, sys
 import pandas
 
 def rount_ceil_minute(d):
@@ -104,12 +104,15 @@ def analyze(file_name):
         number of trade interarrival times for Q1
         number of trade interarrival times for Q2
         number of trade interarrival times for Q3
-        mean daily trade volume
         maximum daily trade volume
         minimum daily trade volume
+        mean daily trade volume
         median daily trade volume
-
-        mean trade price
+        mean trade price over entire month
+        standard deviation of trade price sampled over 3 minutes in bps
+        mean returns sampled over 3 minutes in bps
+        standard deviation of returns sampled over 3 minutes in bps
+        sum of absolute values of returns sampled over 3 minutes in bps        
         maximum daily price in bps (for each business day of 9/2012)
         minimum daily price in bps (for each business day of 9/2012)
         
@@ -163,13 +166,8 @@ def analyze(file_name):
     # because of the application of the diff() method to each group of trade
     # times:
     s_inter_time = \
-      s_inter_time[s_inter_time.notnull()].apply(lambda x: x.total_seconds())                                                              
+      s_inter_time[s_inter_time.notnull()].apply(lambda x: x.total_seconds())  
     
-    # Find the interarrival times (XXX this is incorrect because it doesn't
-    # leave out the intervals between the last trades on each day and the first
-    # trades on each subsequent day XXX)
-    #s_inter_time = s_trade_date_time.diff()[1:].apply(lambda x: x.total_seconds())
-
     # Find number of interarrival times below the quartiles:    
     N_inter_time_q1 = sum(s_inter_time<s_inter_time.quantile(0.25))
     N_inter_time_q2 = sum(s_inter_time<s_inter_time.quantile(0.50))
@@ -178,9 +176,9 @@ def analyze(file_name):
     # Compute the daily traded volume:
     s_daily_vol = df.groupby('trade_date')['trade_quantity'].apply(sum)
     daily_vol_list = s_daily_vol.tolist()
-    mean_daily_vol = s_daily_vol.mean()
     max_daily_vol = s_daily_vol.max()
     min_daily_vol = s_daily_vol.min()
+    mean_daily_vol = s_daily_vol.mean()
     median_daily_vol = s_daily_vol.median()
 
     # Sample trade prices every 3 minutes for each day of the month and combine
@@ -190,18 +188,22 @@ def analyze(file_name):
          sample(d, datetime.timedelta(minutes=3), 
                 'trade_date_time', 'trade_price', 'trade_date'))
 
+    # Compute the average price trade for the entire month of data:
+    mean_trade_price = df['trade_price'].mean()
+    
     # Compute standard deviation of sampled prices:
-    std_trade_price = df_trade_price_res['trade_price'].std()
+    std_trade_price_res = df_trade_price_res['trade_price'].std()
 
-    # Compute average and standard deviation of returns in bps:
+    # Compute returns:
     s_returns = \
       df_trade_price_res.groupby('trade_date').apply( \
         lambda x: x['trade_price'].diff()/x['trade_price'])
+    s_returns = s_returns[s_returns.notnull()]
+    
+    # Compute average and standard deviation of returns in bps:           
     mean_returns = s_returns.mean()*10000
     std_returns = s_returns.std()*10000
-
-    # Compute the average price trade for the entire month of data:
-    mean_trade_price = df['trade_price'].mean()
+    sum_abs_returns = sum(abs(s_returns))*10000
 
     # Compute the daily maximum and minimum trade price expressed in basis
     # points away from the daily opening price:
@@ -209,12 +211,18 @@ def analyze(file_name):
       df.groupby('trade_date')['trade_price'].apply(max)-df.ix[0]['trade_price'])
     daily_price_min_list = map(lambda x: 10000*int(x),
       df.groupby('trade_date')['trade_price'].apply(min)-df.ix[0]['trade_price'])
-    return df
+    return [N_trade_price_q1, N_trade_price_q2, N_trade_price_q3,
+            max_trade_price, min_trade_price, mean_trade_price,
+            N_inter_time_q1, N_inter_time_q2, N_inter_time_q3,
+            max_daily_vol, min_daily_vol, mean_daily_vol, 
+            median_daily_vol, mean_trade_price, std_trade_price_res, 
+            mean_returns, std_returns, sum_abs_returns] + daily_price_max_list + daily_price_min_list
      
 if len(sys.argv) == 1:
     print 'need to specify input files'
     sys.exit(0)
 
-df = analyze(sys.argv[1])    
-# for file_name in sys.argv[1:]:
-#     pass
+w = csv.writer(sys.stdout)
+for file_name in sys.argv[1:]:
+    row = analyze(file_name)    
+    w.writerow([file_name] + row)
