@@ -249,8 +249,6 @@ def analyze(file_name):
     daily_price_min_list = map(lambda x: 10000*int(x),
       df_price.groupby('trade_date')['trade_price'].apply(min)-df.ix[0]['trade_price'])
 
-    #import ipdb; ipdb.set_trace()
-    #return df
     return [N_trade_quant_q1, N_trade_quant_q2, N_trade_quant_q3,
             max_trade_quant, min_trade_quant, mean_trade_quant,
             N_inter_time_q1, N_inter_time_q2, N_inter_time_q3,
@@ -261,10 +259,6 @@ def analyze(file_name):
 if len(sys.argv) == 1:
     print 'need to specify input files'
     sys.exit(0)
-
-# sept_days = map(lambda d: '09/%02i/2012' % d, 
-#                 [3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 24,
-#                  25, 26, 27, 28])        
 
 w = csv.writer(sys.stdout)
 for file_name in sys.argv[1:]:
