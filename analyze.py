@@ -139,10 +139,10 @@ def analyze(file_name):
                                 'sell_algo_ind',
                                 'sell_client_id_flag'])    
 
-    # Find number of trades with quantities below the quartiles:
-    N_trade_quant_q1 = len(df[df['trade_quantity'] <= df['trade_quantity'].quantile(0.25)])
-    N_trade_quant_q2 = len(df[df['trade_quantity'] <= df['trade_quantity'].quantile(0.50)])
-    N_trade_quant_q3 = len(df[df['trade_quantity'] <= df['trade_quantity'].quantile(0.75)])
+    # Find quartiles of number of trades:
+    trade_quant_q1 = df['trade_quantity'].quantile(0.25)
+    trade_quant_q2 = df['trade_quantity'].quantile(0.50)
+    trade_quant_q3 = df['trade_quantity'].quantile(0.75)
 
     # Trade quantity stats:
     max_trade_quant = df['trade_quantity'].max()
@@ -160,29 +160,30 @@ def analyze(file_name):
     
     # Compute trade interarrival times for each day (i.e., the interval between
     # the last trade on one day and the first day on the following day should
-    # not be regarded as an interarrival time):
+    # not be regarded as an interarrival time). Note that this returns the times
+    # in nanoseconds:
     s_inter_time = df.groupby('trade_date')['trade_date_time'].apply(lambda x: x.diff())
-
+    
     # Exclude the NaNs that result because of the application of the diff()
     # method to each group of trade times:
     s_inter_time = s_inter_time[s_inter_time.notnull()]
-    
+
     if len(s_inter_time) > 0:
         
-        # Convert interarrival times to seconds:
-        s_inter_time = s_inter_time.apply(lambda x: x.total_seconds())  
+        # Convert interarrival times from nanoseconds to seconds:
+        s_inter_time = s_inter_time.apply(lambda x: x*10**-9)  
     
-        # Find number of interarrival times below the quartiles:    
-        N_inter_time_q1 = sum(s_inter_time<=s_inter_time.quantile(0.25))
-        N_inter_time_q2 = sum(s_inter_time<=s_inter_time.quantile(0.50))
-        N_inter_time_q3 = sum(s_inter_time<=s_inter_time.quantile(0.75))
+        # Find interarrival time quartiles:    
+        inter_time_q1 = s_inter_time.quantile(0.25)
+        inter_time_q2 = s_inter_time.quantile(0.50)
+        inter_time_q3 = s_inter_time.quantile(0.75)
     else:
 
         # If there are not enough trades per day to compute interarrival times,
         # set the number of times to 0 for each quantile:
-        N_inter_time_q1 = 0
-        N_inter_time_q2 = 0
-        N_inter_time_q3 = 0
+        inter_time_q1 = 0
+        inter_time_q2 = 0
+        inter_time_q3 = 0
         
     # Compute the daily traded volume:
     s_daily_vol = \
@@ -249,9 +250,11 @@ def analyze(file_name):
     daily_price_min_list = map(lambda x: 10000*int(x),
       df_price.groupby('trade_date')['trade_price'].apply(min)-df.ix[0]['trade_price'])
 
-    return [N_trade_quant_q1, N_trade_quant_q2, N_trade_quant_q3,
+    #    return df
+    
+    return [trade_quant_q1, trade_quant_q2, trade_quant_q3,
             max_trade_quant, min_trade_quant, mean_trade_quant,
-            N_inter_time_q1, N_inter_time_q2, N_inter_time_q3,
+            inter_time_q1, inter_time_q2, inter_time_q3,
             max_daily_vol, min_daily_vol, mean_daily_vol, 
             median_daily_vol, mean_trade_price, std_trade_price_res, 
             mean_returns, std_returns, sum_abs_returns] + daily_price_max_list + daily_price_min_list
@@ -260,7 +263,8 @@ if len(sys.argv) == 1:
     print 'need to specify input files'
     sys.exit(0)
 
-w = csv.writer(sys.stdout)
-for file_name in sys.argv[1:]:
-    row = analyze(file_name)    
-    w.writerow([file_name] + row)
+df = analyze(sys.argv[1])
+# w = csv.writer(sys.stdout)
+# for file_name in sys.argv[1:]:
+#     row = analyze(file_name)    
+#     w.writerow([file_name] + row)
