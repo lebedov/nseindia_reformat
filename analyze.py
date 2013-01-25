@@ -23,7 +23,6 @@ def rount_ceil_minute(d):
                                 microseconds=d.microsecond,
                                 minutes=(-1 if d.second != 0 or d.microsend != 0 else 0))
 
-
 def sample(df, delta, date_time_col, *data_cols):
     """
     Sample data at a specific sampling time interval.
@@ -49,38 +48,51 @@ def sample(df, delta, date_time_col, *data_cols):
     -------
     out : pandas.DataFrame
         DataFrame containing column of resampled data points and sampling times.
-        
-    """
 
-    # Uncomment to start and end at the nearest minute after the first and last
-    # times in the input DataFrame:
-    # t_start = round_ceil_minute(df[date_time_col].min())
-    # t_end = round_ceil_minute(df[date_time_col].max())
-    t_start = df[date_time_col].min()
-    t_end = df[date_time_col].max()
+    Notes 
+    -----
+    Sampling begins at 9:15 AM and ends at 3:30 PM.
     
-    date = []
-    data = []
-    t = t_start
-    temp_dict = {date_time_col: []}        
-    last_dict = {}
+    """
+    
+    result_dict = {date_time_col: []}        
     for col in data_cols:
-        temp_dict[col] = []
-        last_dict[col] = df.irow(0)[col]
-    i = 0
+        result_dict[col] = []
 
-    # Only update the data point stored at each time point when 
-    # a time point in the original series is passed:
+    # if len(df) == 0:
+    #     return result_dict
+    
+    temp = df.irow(0)[date_time_col]    
+    t_start = datetime.datetime(temp.year, temp.month, temp.day, 9, 15, 0, 0)
+    t_end = datetime.datetime(temp.year, temp.month, temp.day, 15, 30, 0, 0)
+    
+    data_dict_last = {}
+    for col in data_cols:        
+        data_dict_last[col] = df.irow(0)[col]
+
+    t = t_start
+    i = 0
     while t <= t_end:
-        temp_dict[date_time_col].append(t)
-        while i < len(df) and t >= df.irow(i)[date_time_col]:
-            for col in data_cols:
-                last_dict[col] = df.irow(i)[col]
-            i += 1                       
+
+        # Save the sample time:
+        result_dict[date_time_col].append(t)
+
+        # Store the data associated with the first event as the sampled value
+        # between 9:15 AM and the time of first event when the
+        # latter occurs later than the former:                    
+        if t >= df[date_time_col].min():
+
+            # Only update the data point stored at each time point when 
+            # a time point in the original series is passed:
+            while i < len(df) and t >= df.irow(i)[date_time_col]:
+                for col in data_cols:
+                    data_dict_last[col] = df.irow(i)[col]
+                i += 1  
+            
         for col in data_cols:
-            temp_dict[col].append(last_dict[col])
+            result_dict[col].append(data_dict_last[col])
         t += delta        
-    return pandas.DataFrame(temp_dict)
+    return pandas.DataFrame(result_dict)
     
 def analyze(file_name):
     """
@@ -207,6 +219,7 @@ def analyze(file_name):
 
     # Sample trade prices every 3 minutes for each day of the month and combine
     # into a single DataFrame:
+    # XXX need to handle empty groups
     df_trade_price_res = \
       df.groupby('trade_date').apply(lambda d: \
          sample(d, datetime.timedelta(minutes=3), 
@@ -250,21 +263,19 @@ def analyze(file_name):
     daily_price_min_list = map(lambda x: 10000*int(x),
       df_price.groupby('trade_date')['trade_price'].apply(min)-df.ix[0]['trade_price'])
 
-    #    return df
-    
     return [trade_quant_q1, trade_quant_q2, trade_quant_q3,
             max_trade_quant, min_trade_quant, mean_trade_quant,
             inter_time_q1, inter_time_q2, inter_time_q3,
             max_daily_vol, min_daily_vol, mean_daily_vol, 
             median_daily_vol, mean_trade_price, std_trade_price_res, 
             mean_returns, std_returns, sum_abs_returns] + daily_price_max_list + daily_price_min_list
-     
-if len(sys.argv) == 1:
-    print 'need to specify input files'
-    sys.exit(0)
 
-df = analyze(sys.argv[1])
-# w = csv.writer(sys.stdout)
-# for file_name in sys.argv[1:]:
-#     row = analyze(file_name)    
-#     w.writerow([file_name] + row)
+if __name__ == '__main__':    
+    if len(sys.argv) == 1:
+        print 'need to specify input files'
+        sys.exit(0)
+
+    w = csv.writer(sys.stdout)
+    for file_name in sys.argv[1:]:
+        row = analyze(file_name)    
+        w.writerow([file_name] + row)
