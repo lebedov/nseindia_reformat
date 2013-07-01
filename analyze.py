@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Analyze parsed India trades data.
+Analyze parsed Indian National Stock Exchange trades data.
 """
 
 import csv, datetime, sys
@@ -16,9 +16,9 @@ def rount_ceil_minute(d):
     ----------
     d : datetime.datetime
        A time expressed using the `datetime.datetime` class.
-       
+
     """
-    
+
     return d-datetime.timedelta(seconds=d.second,
                                 microseconds=d.microsecond,
                                 minutes=(-1 if d.second != 0 or d.microsend != 0 else 0))
@@ -31,7 +31,7 @@ def sample(df, delta, date_time_col, *data_cols):
     separated by the specified sampling interval, while the others contain the
     data points associated with the most recent times in the original table
     prior to each successive sampling time.
-    
+
     Parameters
     ----------
     df : pandas.DataFrame
@@ -41,27 +41,27 @@ def sample(df, delta, date_time_col, *data_cols):
         Sampling interval.
     date_time_col : str
         Name of date/time.
-    data_cols : tuple of str 
+    data_cols : tuple of str
         Name(s) of data column.
-        
+
     Returns
     -------
     out : pandas.DataFrame
         DataFrame containing column of resampled data points and sampling times.
 
-    Notes 
+    Notes
     -----
     Sampling begins at 9:15 AM and ends at 3:30 PM.
-    
+
     """
-    
-    result_dict = {date_time_col: []}        
+
+    result_dict = {date_time_col: []}
     for col in data_cols:
         result_dict[col] = []
 
     # if len(df) == 0:
     #     return result_dict
-    
+
     temp = df.irow(0)[date_time_col]    
     t_start = datetime.datetime(temp.year, temp.month, temp.day, 9, 15, 0, 0)
     t_end = datetime.datetime(temp.year, temp.month, temp.day, 15, 30, 0, 0)
@@ -102,7 +102,7 @@ def analyze(file_name):
     ----------
     file_name : str
         Name of CSV file containing parsed India data.
-        
+
     Returns
     -------
     output : list
@@ -125,13 +125,13 @@ def analyze(file_name):
         standard deviation of trade price sampled over 3 minutes in bps
         mean returns sampled over 3 minutes in bps
         standard deviation of returns sampled over 3 minutes in bps
-        sum of absolute values of returns sampled over 3 minutes in bps        
+        sum of absolute values of returns sampled over 3 minutes in bps
         maximum daily price in bps (for each business day of 9/2012)
         minimum daily price in bps (for each business day of 9/2012)
-        
+
     """
 
-    df = pandas.read_csv(file_name, header=None, 
+    df = pandas.read_csv(file_name, header=None,
                          names=['record_indicator',
                                 'segment',
                                 'trade_number',
@@ -149,7 +149,7 @@ def analyze(file_name):
                                 'buy_client_id_flag',
                                 'sell_order_num',
                                 'sell_algo_ind',
-                                'sell_client_id_flag'])    
+                                'sell_client_id_flag'])
 
     # Find quartiles of number of trades:
     trade_quant_q1 = df['trade_quantity'].quantile(0.25)
@@ -169,22 +169,22 @@ def analyze(file_name):
           axis=1)
     s_trade_date_time.name = 'trade_date_time'
     df = df.join(s_trade_date_time)
-    
+
     # Compute trade interarrival times for each day (i.e., the interval between
     # the last trade on one day and the first day on the following day should
     # not be regarded as an interarrival time). Note that this returns the times
     # in nanoseconds:
     s_inter_time = df.groupby('trade_date')['trade_date_time'].apply(lambda x: x.diff())
-    
+
     # Exclude the NaNs that result because of the application of the diff()
     # method to each group of trade times:
     s_inter_time = s_inter_time[s_inter_time.notnull()]
 
     if len(s_inter_time) > 0:
-        
+
         # Convert interarrival times from nanoseconds to seconds:
-        s_inter_time = s_inter_time.apply(lambda x: x*10**-9)  
-    
+        s_inter_time = s_inter_time.apply(lambda x: x*10**-9)
+
         # Find interarrival time quartiles:    
         inter_time_q1 = s_inter_time.quantile(0.25)
         inter_time_q2 = s_inter_time.quantile(0.50)
@@ -196,19 +196,19 @@ def analyze(file_name):
         inter_time_q1 = 0
         inter_time_q2 = 0
         inter_time_q3 = 0
-        
+
     # Compute the daily traded volume:
     s_daily_vol = \
       df.groupby('trade_date')['trade_quantity'].apply(sum)
     df_daily_vol = pandas.DataFrame({'trade_date': s_daily_vol.index,
                                      'trade_quantity': s_daily_vol.values})
-    
+
     # Set the number of trades for days on which no trades were recorded to 0:
-    sept_days = map(lambda d: '09/%02i/2012' % d, 
+    sept_days = map(lambda d: '09/%02i/2012' % d,
                     [3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 24,
-                     25, 26, 27, 28])        
+                     25, 26, 27, 28])
     df_daily_vol = \
-      df_daily_vol.combine_first(pandas.DataFrame({'trade_date': sept_days, 
+      df_daily_vol.combine_first(pandas.DataFrame({'trade_date': sept_days,
                                  'trade_quantity': np.zeros(len(sept_days))}))
 
     # Compute daily volume stats:
@@ -222,7 +222,7 @@ def analyze(file_name):
     # XXX need to handle empty groups
     df_trade_price_res = \
       df.groupby('trade_date').apply(lambda d: \
-         sample(d, datetime.timedelta(minutes=3), 
+         sample(d, datetime.timedelta(minutes=3),
                 'trade_date_time', 'trade_price', 'trade_date'))
 
     # Compute the average price trade for the entire month of data:
@@ -253,7 +253,7 @@ def analyze(file_name):
         
     # Set the trade price for days on which no trades were recorded to 0:
     df_price = df[['trade_date', 'trade_price']]
-    df_price = df_price.combine_first(pandas.DataFrame({'trade_date': sept_days, 
+    df_price = df_price.combine_first(pandas.DataFrame({'trade_date': sept_days,
                                  'trade_price': np.zeros(len(sept_days))}))
 
     # Compute the daily maximum and minimum trade price expressed in basis

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 """
-Parse India data files into multiple CSV files.
+Parse Indian National Stock Exchange orders and trades data files 
+into multiple CSV files.
 """
 
-import csv, os.path, tempfile, shelve, shutil
+import csv, os.path, tempfile, shelve, shutil, sys
 from datetime import datetime
 
 def parse_orders_data(in_file_name, work_dir='./', N_lines=100000):
@@ -217,8 +218,13 @@ def parse_trades_data(in_file_name, work_dir='./', N_lines=100000):
 
 if __name__ == '__main__':
 
-    # Assumes that all of the input data is in a single file:
-    parse_orders_data('/home/lev/india_maglaras/nse/fao/FAO_Orders_14092012.DAT',
-                      '/home/lev/india_maglaras/nse/fao/orders/')
-    parse_trades_data('/home/lev/india_maglaras/nse/fao/FAO_Trades_28092012.DAT',
-                      '/home/lev/india_maglaras/nse/fao/trades/')
+    if len(sys.argv) < 4:
+        print sys.argv
+        print 'usage: '+os.path.basename(sys.argv[0])+' <orders|trades> <input file> <output dir>'
+    else:
+
+        # Assumes that all of the input data is in a single file:
+        if sys.argv[1] == 'orders':
+            parse_orders_data(sys.argv[2], sys.argv[3])
+        elif sys.argv[1] == 'trades':
+            parse_trades_data(sys.argv[2], sys.argv[3])

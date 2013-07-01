@@ -1,10 +1,10 @@
 .. -*- rst -*-
 
-Reformatting and Analysis of India Equity Order/Trade Data
-==========================================================
-The included scripts parse the specified data into CSV files 
-according to the formats described in the accompanying PDF file and 
-analyze the data in each file.
+Reformatting and Analysis of Indian National Stock Exchange Equity Order/Trade Data
+===================================================================================
+The included scripts respectively parse equity derivatives market order and trade data 
+into CSV files according to the formats described in the accompanying PDF file
+and analyze parsed trade data in each file. 
 
 Requirements
 ------------
