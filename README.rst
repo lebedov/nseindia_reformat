@@ -15,8 +15,8 @@ The code requires the following to run:
 
 Author
 ------
-The code was written by `Lev Givon <lev@columbia.edu>`_ in 2012 for `Prof.
-Costis Maglaras <cm479@columbia.edu>`_ at Columbia Unversity's Business School.
+The code was written by Lev Givon in 2012 for Prof.
+Costis Maglaras at Columbia Unversity's Business School.
 
 License
 -------
